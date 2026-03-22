@@ -1,14 +1,14 @@
 const express = require('express');
 const router = express.Router();
 
-module.exports = (db) => {
+module.exports = () => {
   // Advanced query with filter and sort
-  router.get('/tables/:name/query', (req, res) => {
-    const tableName = req.params.name;
-    let sql = `SELECT * FROM ${tableName}`;
-    const params = [];
-
+  router.get('/tables/:name/query', async (req, res) => {
     try {
+      const tableName = req.params.name;
+      let sql = `SELECT * FROM ${tableName}`;
+      const params = [];
+
       // Parse filter query parameter
       if (req.query.filter) {
         const filter = JSON.parse(req.query.filter);
@@ -29,14 +29,27 @@ module.exports = (db) => {
       sql += ` LIMIT ? OFFSET ?`;
       params.push(limit, offset);
 
-      db.all(sql, params, (err, rows) => {
-        if (err) {
-          return res.status(500).json({ error: err.message });
-        }
-        res.json({ data: rows, count: rows.length });
-      });
+      const rows = await req.db.executeQuery(sql, params);
+      res.json({ data: rows, count: rows.length });
     } catch (error) {
       res.status(400).json({ error: 'Invalid query parameters', details: error.message });
+    }
+  });
+
+  // Execute ANY SQL (Internal / Admin use for Blueprint / Schema changes)
+  router.post('/query', async (req, res) => {
+    const { sql, params = [] } = req.body;
+    
+    if (!sql) {
+      return res.status(400).json({ error: 'SQL string is required' });
+    }
+
+    try {
+      const result = await req.db.executeQuery(sql, params);
+      res.json({ success: true, result });
+    } catch (error) {
+      console.error('SQL Execution Error:', error);
+      res.status(500).json({ error: error.message });
     }
   });
 

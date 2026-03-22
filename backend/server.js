@@ -1,60 +1,84 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const sqlite3 = require('sqlite3').verbose();
+const session = require('express-session');
+const db = require('./db');
 require('dotenv').config();
 
 const app = express();
 
+// Session middleware
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'tableforge-secret-key',
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: false, httpOnly: true, maxAge: 24 * 60 * 60 * 1000 }
+}));
+
 // Middleware
-app.use(cors());
+app.use(cors({ 
+  origin: function (origin, callback) {
+    callback(null, true); // Allow all origins for local dev with credentials
+  }, 
+  credentials: true 
+}));
 app.use(bodyParser.json());
 
-// SQLite Database Setup
-const db = new sqlite3.Database('./data.db', (err) => {
-  if (err) {
-    console.error('Database connection error:', err.message);
-  } else {
-    console.log('✓ Connected to SQLite database');
+// Routes
+const connectionRouter = require('./routes/connection');
+const tablesRouter = require('./routes/tables');
+const rowsRouter = require('./routes/rows');
+const queryRouter = require('./routes/query');
+const aiRouter = require('./routes/ai');
+
+app.use('/api', connectionRouter());
+
+app.use('/api', (req, res, next) => {
+  const sessionId = req.sessionID;
+  const conn = db.activeConnections.get(sessionId);
+  if (!conn && req.path !== '/test-connection' && req.path !== '/connection-status') {
+    return res.status(403).json({ error: 'Not connected to database. Please connect first.' });
   }
+  next();
 });
 
-// Create sample table
-db.run(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  )
-`);
+// Attach DB to requests
+app.use((req, res, next) => {
+  const sessionId = req.sessionID;
+  const conn = db.activeConnections.get(sessionId);
+  if (conn) {
+    req.db = {
+      connection: conn.connection,
+      type: conn.type,
+      executeQuery: (sql, params = []) => db.executeQuery(conn.connection, conn.type, sql, params)
+    };
+  }
+  next();
+});
+
+// Important: pass the db module to routers if they need it
+app.use('/api', tablesRouter(db));
+app.use('/api', rowsRouter(db));
+app.use('/api', queryRouter(db));
+app.use('/api', aiRouter(db));
 
 // Root route
 app.get('/', (req, res) => {
   res.json({ message: 'TableForge API is running! Access /api/health for status.' });
 });
 
-// Test route
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'Server is running!' });
+app.get('/api', (req, res) => {
+  res.json({ message: 'Welcome to TableForge API! Available endpoints: /api/tables, /api/health' });
 });
 
-// Import routes
-const tablesRouter = require('./routes/tables');
-const rowsRouter = require('./routes/rows');
-const queryRouter = require('./routes/query');
-const aiRouter = require('./routes/ai');
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'Server running' });
+});
 
-// Use routes
-app.use('/api', tablesRouter(db));
-app.use('/api', rowsRouter(db));
-app.use('/api', queryRouter(db));
-app.use('/api', aiRouter(db));
-
-// Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`✓ Server running on port ${PORT}`);
+  console.log(`✓ TableForge server running on port ${PORT}`);
 });
 
 module.exports = { app, db };

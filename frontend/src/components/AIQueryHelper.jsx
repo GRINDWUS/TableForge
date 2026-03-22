@@ -1,6 +1,17 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
+const COMMON_TEMPLATES = [
+  { label: '--- 🎨 Quick Templates ---', sql: '' },
+  { label: 'List all records', sql: (table) => `SELECT * FROM ${table} LIMIT 100;` },
+  { label: 'Find by custom ID', sql: (table) => `SELECT * FROM ${table} WHERE id = 1;` },
+  { label: 'Sort by Latest (Newest first)', sql: (table) => `SELECT * FROM ${table} ORDER BY id DESC;` },
+  { label: 'Count total records', sql: (table) => `SELECT COUNT(*) FROM ${table};` },
+  { label: 'Search for text', sql: (table) => `SELECT * FROM ${table} WHERE name LIKE '%text%';` },
+  { label: 'High Priority (Demo Table)', sql: (table) => `SELECT * FROM ${table} WHERE priority >= 4;` },
+  { label: 'Show Urgent Tasks', sql: (table) => `SELECT * FROM ${table} WHERE is_urgent = 1;` },
+];
+
 export function AIQueryHelper({ tableName, tableSchema }) {
   const [query, setQuery] = useState('');
   const [suggestion, setSuggestion] = useState('');
@@ -9,12 +20,22 @@ export function AIQueryHelper({ tableName, tableSchema }) {
   const [copied, setCopied] = useState(false);
 
   const API = axios.create({
-    baseURL: 'http://localhost:5000/api'
+    baseURL: 'http://localhost:5000/api',
+    withCredentials: true
   });
+
+  const handleApplyTemplate = (e) => {
+    const template = COMMON_TEMPLATES.find(t => t.label === e.target.value);
+    if (template && template.sql) {
+      const sql = typeof template.sql === 'function' ? template.sql(tableName) : template.sql;
+      setSuggestion(sql);
+      setError('');
+    }
+  };
 
   const handleGetSuggestion = async () => {
     if (!query.trim()) {
-      setError('Please enter a query description');
+      setError('Please describe your query first');
       return;
     }
 
@@ -24,15 +45,16 @@ export function AIQueryHelper({ tableName, tableSchema }) {
 
     try {
       const response = await API.post('/ai/suggest-query', {
+        tableName: tableName,
         schema: tableSchema,
         userQuery: query
       });
       setSuggestion(response.data.suggestion);
-    } catch (error) {
-      console.error('Error getting suggestion:', error);
+    } catch (err) {
+      console.error('Error getting suggestion:', err);
       setError(
-        error.response?.data?.error || 
-        'Error getting AI suggestion. Check that ANTHROPIC_API_KEY is set in .env'
+        err.response?.data?.error || 
+        'Error connecting to AI service. Falling back to local engine failed.'
       );
     } finally {
       setLoading(false);
@@ -52,60 +74,83 @@ export function AIQueryHelper({ tableName, tableSchema }) {
   };
 
   return (
-    <div className="p-4 bg-white rounded border shadow mb-4">
-      <h3 className="text-lg font-bold mb-4 text-gray-800">
-        🤖 AI Query Helper
-      </h3>
-
-      <div className="space-y-4">
+    <div className="p-6 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 shadow-2xl mb-6 transition-all duration-300">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+          <span className="text-2xl">🤖</span>
+        </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Describe what you want to query (in plain English):
+          <h3 className="text-xl font-bold text-gray-800 dark:text-white">AI Query Architect</h3>
+          <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-widest font-black">Natural Language to SQL</p>
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        <div>
+          <label className="block text-xs font-bold text-gray-400 mb-2 uppercase">
+            Describe what you want to query:
           </label>
           <textarea
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Example: 'Show me all users named John who have an email'"
-            className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 resize-vertical"
-            rows="3"
+            placeholder="Example: 'Find all urgent tasks with priority 5'"
+            className="w-full p-4 border dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white shadow-inner resize-none h-24 transition-all"
           />
-          <p className="text-xs text-gray-500 mt-1">
-            💡 Tip: Press Ctrl+Enter to submit
+          <p className="text-[10px] text-gray-400 mt-2 italic">
+            💡 Tip: Press Ctrl+Enter to architect the query
           </p>
         </div>
 
         {error && (
-          <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-            {error}
+          <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium animate-pulse">
+            ⚠️ {error}
           </div>
         )}
 
-        <button
-          onClick={handleGetSuggestion}
-          disabled={loading}
-          className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 font-medium transition"
-        >
-          {loading ? '⏳ Getting suggestion...' : '✨ Get AI Suggestion'}
-        </button>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <button
+            onClick={handleGetSuggestion}
+            disabled={loading || !query.trim()}
+            className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-bold rounded-xl hover:from-blue-700 hover:to-indigo-800 disabled:opacity-50 transition transform active:scale-95 shadow-lg flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+            ) : '✨ Generate Blueprint'}
+          </button>
+
+          <div className="relative">
+            <select 
+              onChange={handleApplyTemplate}
+              className="w-full py-3 px-4 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 font-bold rounded-xl text-gray-700 dark:text-gray-200 outline-none cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition shadow-md"
+            >
+              {COMMON_TEMPLATES.map(t => (
+                <option key={t.label} value={t.label}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
 
         {suggestion && (
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Suggested SQL Query:
-            </label>
-            <div className="relative bg-gray-100 p-3 rounded font-mono text-sm break-all border border-gray-300">
-              {suggestion}
+          <div className="animate-slideUp pt-4 border-t dark:border-gray-700">
+            <label className="text-[10px] font-black text-emerald-600 mb-2 block uppercase tracking-tighter">🚀 Recommended Blueprint (SQL):</label>
+            <div className="relative group">
+              <pre className="p-4 bg-gray-900 border border-gray-700 text-emerald-400 font-mono text-sm rounded-xl overflow-x-auto shadow-2xl min-h-[80px] break-all whitespace-pre-wrap leading-relaxed">
+                {suggestion}
+              </pre>
               <button
                 onClick={handleCopy}
-                className="absolute top-2 right-2 px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 transition"
+                className="absolute top-3 right-3 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-[10px] uppercase font-bold rounded-lg backdrop-blur-md transition border border-white/20"
               >
-                {copied ? '✓ Copied' : 'Copy'}
+                {copied ? '✅ Copied' : '📋 Copy'}
               </button>
             </div>
-            <p className="text-xs text-gray-500">
-              💡 Note: Verify this SQL before using it. You can paste it into your database client.
-            </p>
+            <div className="mt-3 flex items-center gap-2 p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-100 dark:border-amber-900/50">
+              <span className="text-amber-500 text-xs">⚠️</span>
+              <p className="text-[10px] text-amber-700 dark:text-amber-400 font-medium">
+                Verify this SQL before executing. Paste it into your database client to apply.
+              </p>
+            </div>
           </div>
         )}
       </div>
