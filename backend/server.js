@@ -29,6 +29,11 @@ db.run(`
   )
 `);
 
+// Root route
+app.get('/', (req, res) => {
+  res.json({ message: 'TableForge API is running! Access /api/health for status.' });
+});
+
 // Test route
 app.get('/api/health', (req, res) => {
   res.json({ status: 'Server is running!' });
@@ -37,10 +42,14 @@ app.get('/api/health', (req, res) => {
 // Import routes
 const tablesRouter = require('./routes/tables');
 const rowsRouter = require('./routes/rows');
+const queryRouter = require('./routes/query');
+const aiRouter = require('./routes/ai');
 
 // Use routes
 app.use('/api', tablesRouter(db));
 app.use('/api', rowsRouter(db));
+app.use('/api', queryRouter(db));
+app.use('/api', aiRouter(db));
 
 // Start server
 const PORT = process.env.PORT || 5000;
