@@ -1,11 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const Anthropic = require("@anthropic-ai/sdk");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 module.exports = (db) => {
   // AI Clients initialization
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
   router.post('/ai/suggest-query', async (req, res) => {
@@ -34,22 +32,8 @@ module.exports = (db) => {
       }
     }
 
-    // 2. Try ANTHROPIC (Fallback)
-    if (process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_API_KEY.includes('PASTE')) {
-      try {
-        const message = await anthropic.messages.create({
-          model: "claude-3-haiku-20240307",
-          max_tokens: 200,
-          messages: [{ role: "user", content: prompt }]
-        });
-        const suggestion = message.content[0].text.trim();
-        if (suggestion) return res.json({ suggestion });
-      } catch (err) {
-        console.warn('Anthropic API Failed:', err.message);
-      }
-    }
     
-    // 3. PERMANENT FALLBACK ENGINE (Zero-Cost Safety Net)
+    // 2. PERMANENT FALLBACK ENGINE (Zero-Cost Safety Net)
     let sql = `SELECT * FROM ${table}`;
     let where = [];
     const cols = schema.map(c => (c.name || c.Field || c.column_name).toLowerCase());
@@ -67,7 +51,7 @@ module.exports = (db) => {
       where.push(`is_urgent = 1`);
     }
 
-    // 3b. Priority 2: Generic Filtering Loop
+    // 2b. Priority 2: Generic Filtering Loop
     cols.forEach(col => {
       // Don't re-process columns already handled by specific logic above
       if (q.includes(col) && !where.some(w => w.toLowerCase().includes(col))) {
