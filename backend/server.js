@@ -34,6 +34,14 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'Server is running!' });
 });
 
+// Import routes
+const tablesRouter = require('./routes/tables');
+const rowsRouter = require('./routes/rows');
+
+// Use routes
+app.use('/api', tablesRouter(db));
+app.use('/api', rowsRouter(db));
+
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

@@ -1,4 +1,15 @@
-/* Add any additional app-specific styles here */
 body {
   overflow-x: hidden;
+}
+
+button {
+  transition: all 0.2s ease;
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+table tbody tr {
+  transition: background-color 0.1s ease;
 }
