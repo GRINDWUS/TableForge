@@ -1,6 +1,6 @@
 # TableForge ⚡
 
-**Spreadsheet Interface for Real Databases** - Built in 16 hours for Watch The Code 2024
+**Spreadsheet Interface for Real Databases** - Built in 16 hours for Watch The Code 2026
 
 ## 🎯 What is TableForge?
 
@@ -84,10 +84,6 @@ Create `backend/.env`:
 PORT=5000
 DATABASE=./data.db
 NODE_ENV=development
-ANTHROPIC_API_KEY=sk-ant-your-key-here
-```
-
-Get your API key: [console.anthropic.com/account/keys](https://console.anthropic.com/account/keys)
 
 ## 📖 Usage
 
@@ -156,29 +152,7 @@ GET  /api/ai/recommendations/:table → Get optimization tips
 - **5 advanced features** (AI, filters, export, relationships, dark mode)
 - **Built in 16 hours** ⚡
 
-## 🚢 Deployment
-
-### Frontend (Vercel)
-```bash
-cd frontend
-npm run build
-vercel deploy
-```
-
-### Backend (Railway)
-```bash
-cd backend
-heroku create tableforge-api
-git push heroku main
-# Set environment variables in dashboard
-```
-
-### With Custom Domain
-```
-Frontend: tableforge.yourdomain.com
-Backend:  api.tableforge.yourdomain.com
-```
-
+ 
 ## 🗺️ Future Roadmap
 
 ### Month 1-2: Scale
@@ -234,11 +208,11 @@ MIT - Open source and free to use
 
 ## 👥 Team
 
-Built by the TableForge team during **Watch The Code 2024** 🏆
+Built by the GRINDWUS TEAM **Watch The Code 2026** 🏆
 
 ## 🤖 AI Features
 
-TableForge uses **Claude 3 Haiku** from Anthropic for:
+TableForge uses **GEMINI 2.0** from GOOGLE for:
 - SQL query suggestions from plain English
 - Database optimization recommendations
 - Smart query building
@@ -265,19 +239,8 @@ Error: Access-Control-Allow-Origin
 Solution: Check backend has cors() middleware
 ```
 
-### AI suggestions not working
-```
-Error: ANTHROPIC_API_KEY not configured
-Solution: Add your key to backend/.env
-Get key: https://console.anthropic.com/account/keys
-```
-
-### SQLite database not found
-```
-Solution: Backend auto-creates data.db
-Run seed.js to add sample data: node backend/seed.js
-```
-
+  
+ 
 ## 📞 Support
 
 - 📖 Check the README
@@ -286,6 +249,6 @@ Run seed.js to add sample data: node backend/seed.js
 
 ---
 
-**Made with ❤️ for Watch The Code 2024**
+**Made with ❤️ for Watch The Code 2026**
 
 TableForge: *Make database management as easy as Excel* ⚡
